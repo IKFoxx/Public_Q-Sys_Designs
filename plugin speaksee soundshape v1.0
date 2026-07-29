@@ -1,0 +1,438 @@
+--[[For Q-SYS Designer, the best approach would be a Q-SYS Plugin (Lua-based) that interfaces with the Speaksee/SoundShape system rather than a schematic-design plugin. Q-SYS plugins are used to create control components, manage APIs, monitor status, and automate AV workflows.
+
+Based on the available Speaksee documentation, the hardware uses Wi‑Fi/Ethernet networking and is managed through software services, making it suitable for a networked Q‑SYS integration.
+
+Proposed Q-SYS Plugin Features
+Control Functions
+Start/Stop transcription
+Enable/Disable translation
+Select language
+Mute microphones
+Microphone battery monitoring
+Connection status monitoring
+Monitoring
+Online/Offline state
+Active speaker count
+Audio input status
+Translation status
+Network connectivity
+UCI Controls
++---------------------------------+
+| Speaksee Controller             |
++---------------------------------+
+| Status: Connected               |
+| Language: English → Dutch       |
+| Participants: 3                 |
+|                                 |
+| [Start] [Stop]                  |
+| [Translate On/Off]              |
+|                                 |
+| Mic1 Battery 92%                |
+| Mic2 Battery 88%                |
+| Mic3 Battery 97%                |
++---------------------------------+
+]]-- 
+Basic Q-SYS Plugin Skeleton
+PluginInfo = {
+    Name = "Speaksee Controller",
+    Version = "1.0",
+    Id = "com.soundshape.speaksee"
+}
+
+Controls = {
+    {
+        Name = "Connect",
+        ControlType = "Button"
+    },
+    {
+        Name = "Status",
+        ControlType = "Indicator"
+    },
+    {
+        Name = "Language",
+        ControlType = "Text"
+    }
+}
+
+--HTTP API Example
+
+--If Speaksee exposes REST endpoints:
+
+HttpClient.Get {
+    Url = "http://SPEAKSEE-IP/api/status",
+    EventHandler = function(tbl, code, data)
+        if code == 200 then
+            Controls.Status.Boolean = true
+        end
+    end
+}
+
+--[[
+Q-SYS Block Diagram
+Q-SYS Core
+    │
+    ├── Speaksee Plugin
+    │
+    ├── UCI Interface
+    │
+    ├── Room Controls
+    │
+    └── Event Scheduler
+            │
+            ▼
+      Speaksee System
+
+Advanced Integration
+
+You could also:
+
+Route Speaksee subtitle URLs directly to Q-SYS Touch Panels.
+Trigger translations when meetings start.
+Display Speaksee status on a UCI.
+Control SoundShape subtitle sessions from room presets.
+Synchronize microphone status with Q-SYS monitoring dashboards.
+
+Plugin Structure
+SpeakSeeQSYS/
+├── plugin.lua
+├── controls.lua
+├── network.lua
+├── ui.lua
+└── README.md
+]]--
+
+--plugin.lua
+PluginInfo = {
+    Name = "SpeakSee Controller",
+    Version = "1.0.0",
+    Id = "com.soundshape.speaksee",
+    Author = "Custom Integration"
+}
+
+Properties = {
+    {
+        Name = "Host",
+        Type = "String",
+        Value = "192.168.1.100"
+    },
+    {
+        Name = "Port",
+        Type = "Integer",
+        Value = 80
+    },
+    {
+        Name = "Username",
+        Type = "String",
+        Value = ""
+    },
+    {
+        Name = "Password",
+        Type = "String",
+        Value = ""
+    },
+    {
+        Name = "Polling Interval",
+        Type = "Integer",
+        Value = 10
+    }
+}
+
+--Controls Definition
+Controls = {
+
+    {
+        Name = "Connect",
+        ControlType = "Button",
+        Count = 1
+    },
+
+    {
+        Name = "Disconnect",
+        ControlType = "Button",
+        Count = 1
+    },
+
+    {
+        Name = "Status",
+        ControlType = "Indicator",
+        Count = 1
+    },
+
+    {
+        Name = "StartSession",
+        ControlType = "Button",
+        Count = 1
+    },
+
+    {
+        Name = "StopSession",
+        ControlType = "Button",
+        Count = 1
+    },
+
+    {
+        Name = "EnableTranslation",
+        ControlType = "Button",
+        Count = 1
+    },
+
+    {
+        Name = "Language",
+        ControlType = "Text",
+        Count = 1
+    },
+
+    {
+        Name = "ActiveSpeakers",
+        ControlType = "Text",
+        Count = 1
+    },
+
+    {
+        Name = "Mic1Battery",
+        ControlType = "Knob",
+        Count = 1
+    },
+
+    {
+        Name = "Mic2Battery",
+        ControlType = "Knob",
+        Count = 1
+    },
+
+    {
+        Name = "Mic3Battery",
+        ControlType = "Knob",
+        Count = 1
+    },
+
+    {
+        Name = "LastError",
+        ControlType = "Text",
+        Count = 1
+    }
+}
+
+Network Layer
+local host = Properties["Host"].Value
+local port = Properties["Port"].Value
+
+function GetStatus()
+
+    HttpClient.Get {
+        Url = "http://" .. host .. ":" .. port .. "/api/status",
+
+        EventHandler = function(tbl, code, data)
+
+            if code == 200 then
+
+                Controls.Status.Boolean = true
+
+                local json = RapidJSON.Decode(data)
+
+                Controls.ActiveSpeakers.String =
+                    tostring(json.activeSpeakers)
+
+                Controls.Mic1Battery.Value =
+                    json.microphones[1].battery
+
+                Controls.Mic2Battery.Value =
+                    json.microphones[2].battery
+
+                Controls.Mic3Battery.Value =
+                    json.microphones[3].battery
+
+            else
+
+                Controls.Status.Boolean = false
+                Controls.LastError.String =
+                    "HTTP Error: " .. tostring(code)
+
+            end
+        end
+    }
+end
+
+Session Control
+function StartSession()
+
+    HttpClient.Post {
+
+        Url = "http://" ..
+              Properties["Host"].Value ..
+              "/api/session/start",
+
+        EventHandler = function(tbl, code, data)
+
+            if code == 200 then
+
+                Log.Info("Session started")
+
+            else
+
+                Log.Error("Start failed")
+
+            end
+        end
+    }
+
+end
+
+function StopSession()
+
+    HttpClient.Post {
+
+        Url = "http://" ..
+              Properties["Host"].Value ..
+              "/api/session/stop"
+
+    }
+
+end
+
+Event Handlers
+Controls.Connect.EventHandler = function()
+
+    GetStatus()
+
+end
+
+Controls.StartSession.EventHandler = function()
+
+    StartSession()
+
+end
+
+Controls.StopSession.EventHandler = function()
+
+    StopSession()
+
+end
+
+Polling Timer
+PollTimer = Timer.New()
+
+PollTimer.EventHandler = function()
+
+    GetStatus()
+
+end
+
+PollTimer:Start(
+    Properties["Polling Interval"].Value
+)
+
+UCI Layout
+Page 1 — Overview
++------------------------------------------------------+
+| SpeakSee Controller                                  |
++------------------------------------------------------+
+
+Status:  ● Connected
+
+Language:
+[ English ▼ ]
+
+Translation:
+[ ON ]
+
+Active Speakers:
+3
+
+--------------------------------------------------------
+
+[ START SESSION ]     [ STOP SESSION ]
+
+--------------------------------------------------------
+
+Mic 1 Battery  93%
+
+Mic 2 Battery  87%
+
+Mic 3 Battery  95%
+
+--------------------------------------------------------
+
+Last Error:
+None
+
+Page 2 — Language Control
++-----------------------------------+
+| Translation Settings              |
++-----------------------------------+
+
+Source Language
+
+[ Auto ▼ ]
+
+Target Language
+
+[ English ▼ ]
+
+[ Dutch ▼ ]
+
+[ German ▼ ]
+
+[ French ▼ ]
+
+[ Spanish ▼ ]
+
+-------------------------------------
+
+Translation
+
+[ ENABLE ]
+
+[ DISABLE ]
+
+Page 3 — Diagnostics
++-----------------------------------+
+| Diagnostics                       |
++-----------------------------------+
+
+Device Status:
+Connected
+
+IP Address:
+192.168.1.100
+
+Latency:
+22 ms
+
+Firmware:
+1.4.3
+
+Microphones:
+3 Online
+
+-------------------------------------
+
+[ REFRESH ]
+
+[ RESTART SERVICE ]
+
+[ EXPORT LOGS ]
+
+Recommended UCI Components
+Component	PurposeLED Indicator	Online status
+Text Field	Device state
+Buttons	Start/Stop
+Drop-down	Language selection
+Circular Meter	Battery levels
+Log Window	Fault reporting
+Status Banner	Health overview
+Future Enhancements
+
+Add support for:
+
+Live subtitle URL generation
+QR code display on Q-SYS touch panels
+Room-combine automation
+Microsoft Teams room synchronization
+SIP meeting triggers
+Automatic language detection
+Real-time caption display inside UCI
+WebSocket subscriptions instead of polling
+Core Manager monitoring integration
+
+This template should import into Q-SYS as a standard Lua plugin project and can be connected to the actual SpeakSee/SoundShape API once endpoint documentation is available.
