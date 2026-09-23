@@ -1,0 +1,60 @@
+Suggested UCI Layout
++------------------------------------------------+
+| SPEAKSEE / SOUNDSHAPE CONTROLLER               |
++------------------------------------------------+
+
+[CONNECT] [DISCONNECT]
+
+Status: ● ONLINE
+
+Language:
+[ English ]
+
+Active Speakers:
+[ 3 ]
+
+-------------------------------------------------
+
+[START SESSION]
+
+[STOP SESSION]
+
+-------------------------------------------------
+
+[ENABLE TRANSLATION]
+
+[DISABLE TRANSLATION]
+
+-------------------------------------------------
+
+Mic 1 Battery
+[Gauge]
+
+Mic 2 Battery
+[Gauge]
+
+Mic 3 Battery
+[Gauge]
+
+-------------------------------------------------
+
+Last Error:
+[Text Field]
+
+
+Important: Replace the placeholder endpoints:
+
+Plain Text
+1
+/api/status
+2
+/api/session/start
+3
+/api/session/stop
+4
+/api/translation/enable
+5
+/api/translation/disable
+Show more lines
+
+with the actual SpeakSee/SoundShape API endpoints once you obtain their API documentation. The current URLs are scaffolding only.
